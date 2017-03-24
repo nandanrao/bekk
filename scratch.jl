@@ -3,6 +3,8 @@ using Convex
 using SCS
 using Wavelets
 using Base.Test
+using JuMP
+using Clp
 
 # Use SCS solver
 solver = SCSSolver(verbose=0)
@@ -39,10 +41,9 @@ end
 # optimize
 
 function lik(H, r)
-    # m = fill(0, length(r))
-    # logpdf(MvNormal(m, H), r)
-    S = (r - mean(r))*(r - mean(r))'
-    logdet(H) - trace(S * H)
+    m = fill(0, length(r))
+    logpdf(MvNormal(m, H), r)
+    # S = (r - mean(r))*(r - mean(r))'
 end
 
 @testset "likelihood" begin
@@ -50,25 +51,20 @@ end
     @test lik(cov(randn(10,3)), randn(3)) == -2.885949899751278
 end
 
-function formula(C, A, G, r, H_prev)
-    # C = make_upper_triangle(c, d)
-    # print(C)
-    C'*C + A'*r*r'*A + G'*H_prev*G
+function formula(c, d, A, G, r, H_prev) 
+    C = make_upper_triangle(c, d)
+    print(C)
+    C'*C + A'*r*r'*A + G'*H_prev*G # K = 1 for now!!
 end
-
-upper(n) = reduce(vcat, [[fill(0, i)' Variable(n - i)'] for i in 0:(n-1)])
 
 function optimizer(r, H_prev)
     n = length(r)
-    # C = upper(n)
-    # c = Variable(corner_length(n))
-    # d = Variable(n) # positive with 1,1,1?
-    # A = Variable(n, n) # first el positive with 1,1,1?
-    # G = Variable(n, n) # first el positive with 1,1,1?
-    G = zeros(n^2)
-
-    optimize(f, )
-
-    problem = maximize(lik(formula(C, A, G, r, H_prev), r))
-    solve!(problem)
+    m = Model(solver = ClpSolver())
+    @variable(m, d[1:n] >= 0) # diagonal of C is positive
+    @variable(m, c[1:corner_length(n)]) # upper corner of C
+    @variable(m, A[1:n, 1:n])
+    @variable(m, G[1:n, 1:n])
+    # add positive contraints on 1,1 of A and G? 
+    @objective(m, Max, formula(c, d, A, G, r, H_prev))
+    solve(m)
 end
