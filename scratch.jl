@@ -40,15 +40,17 @@ end
 ########################
 # optimize
 
-function lik(H, r)
+function lik(H, r, r_prev)
+    # make m via VARMA
     m = fill(0, length(r))
-    logpdf(MvNormal(m, H), r)
-    # S = (r - mean(r))*(r - mean(r))'
+    # m = r_prev
+    -1/2 * (r - m)' * H^-1 * (r - m) - log(sqrt(2*pi*det(H)))
+    # logpdf(MvNormal(m, H), r)
 end
 
 @testset "likelihood" begin
     srand(123)
-    @test lik(cov(randn(10,3)), randn(3)) == -2.885949899751278
+    @test lik(cov(randn(10,3)), randn(3), [0,0,0]) == -2.885949899751278
 end
 
 function formula(c, d, A, G, r, H_prev) 
@@ -56,6 +58,11 @@ function formula(c, d, A, G, r, H_prev)
     print(C)
     C'*C + A'*r*r'*A + G'*H_prev*G # K = 1 for now!!
 end
+
+# upper(n) = reduce(vcat, [[fill(0, i)' Variable(n - i)'] for i in 0:(n-1)])
+
+# do something with upper triangular nonsense
+# bring formula into optimizer, not as udf
 
 function optimizer(r, H_prev)
     n = length(r)
