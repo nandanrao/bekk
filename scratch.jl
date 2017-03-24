@@ -42,15 +42,22 @@ end
 
 function lik(H, r, r_prev)
     # make m via VARMA
-    m = fill(0, length(r))
-    # m = r_prev
-    -1/2 * (r - m)' * H^-1 * (r - m) - log(sqrt(2*pi*det(H)))
-    # logpdf(MvNormal(m, H), r)
+    m = r_prev
+    l = -1/2 * (r - m)' * H^-1 * (r - m) - log(sqrt(det(2*pi*H)))
+    l[1]
+end
+
+function piotr(H, r, r_prev)
+    m = r_prev
+    S = (r - mean(r))*(r - mean(r))'
+    logdet(H) - trace(S * H)
 end
 
 @testset "likelihood" begin
     srand(123)
-    @test lik(cov(randn(10,3)), randn(3), [0,0,0]) == -2.885949899751278
+    @test isapprox(lik(cov(randn(10,3)), randn(3), [0,0,0]), -2.885949899751278)
+    srand(120)
+    @test piotr(cov(randn(10,3)), randn(3), [0,0,0]) == -2.885949899751278
 end
 
 function formula(c, d, A, G, r, H_prev) 
