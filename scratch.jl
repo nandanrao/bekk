@@ -3,8 +3,7 @@ using Convex
 using SCS
 using Wavelets
 using Base.Test
-using JuMP
-using Clp
+using Optim
 
 # Use SCS solver
 solver = SCSSolver(verbose=0)
@@ -54,15 +53,14 @@ function piotr(H, r, r_prev)
 end
 
 @testset "likelihood" begin
-    srand(123)
-    @test isapprox(lik(cov(randn(10,3)), randn(3), [0,0,0]), -2.885949899751278)
-    srand(120)
+    srand(124)
+    @test lik(cov(randn(10,3)), randn(3), [0,0,0]) == -2.885949899751278
+    srand(124)
     @test piotr(cov(randn(10,3)), randn(3), [0,0,0]) == -2.885949899751278
 end
 
 function formula(c, d, A, G, r, H_prev) 
     C = make_upper_triangle(c, d)
-    print(C)
     C'*C + A'*r*r'*A + G'*H_prev*G # K = 1 for now!!
 end
 
@@ -79,6 +77,6 @@ function optimizer(r, H_prev)
     @variable(m, A[1:n, 1:n])
     @variable(m, G[1:n, 1:n])
     # add positive contraints on 1,1 of A and G? 
-    @objective(m, Max, formula(c, d, A, G, r, H_prev))
+    @NLobjective(m, Max, formula(c, d, A, G, r, H_prev))
     solve(m)
 end
